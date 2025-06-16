@@ -14,6 +14,13 @@ def scrape_with_selenium():
     driver = webdriver.Chrome(options=options)
     driver.get("https://www.actionnetwork.com/public-betting")
 
+    driver.get("https://www.actionnetwork.com/public-betting")
+
+    # Dump the page content to inspect what loaded
+    with open("debug.html", "w", encoding="utf-8") as f:
+        f.write(driver.page_source)
+    print("Page loaded and saved to debug.html")
+
     # Wait up to 10 seconds for the table to fully load
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.CSS_SELECTOR, "[data-testid='public-betting-table'] tbody tr"))
