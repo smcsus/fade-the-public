@@ -1,71 +1,58 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import requests
 import pandas as pd
 from datetime import datetime
 
-def scrape_with_selenium():
-    options = Options()
-    options.add_argument("--headless")  # run in background
-    options.add_argument("--disable-gpu")
+# Config
+SPORT = "mlb"  # Change to "nba", "nfl", etc. if needed
+DATE = datetime.now().strftime("%Y%m%d")
+THRESHOLD = 70  # Minimum public % to track
 
-    driver = webdriver.Chrome(options=options)
-    driver.get("https://www.actionnetwork.com/public-betting")
+API_URL = (
+    f"https://api.actionnetwork.com/web/v2/scoreboard/publicbetting/"
+    f"{SPORT}?bookIds=15,30,75,123,69,68,972,71,247,79&date={DATE}&periods=event"
+)
 
-    driver.get("https://www.actionnetwork.com/public-betting")
+def fetch_betting_data():
+    headers = {
+        "User-Agent": "Mozilla/5.0"
+    }
 
-    # Dump the page content to inspect what loaded
-    with open("debug.html", "w", encoding="utf-8") as f:
-        f.write(driver.page_source)
-    print("Page loaded and saved to debug.html")
+    response = requests.get(API_URL, headers=headers)
+    response.raise_for_status()
 
-    # Wait up to 10 seconds for the table to fully load
-    WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "[data-testid='public-betting-table'] tbody tr"))
-    )
-
-    rows = driver.find_elements(By.CSS_SELECTOR, "[data-testid='public-betting-table'] tbody tr")
+    data = response.json()
     games = []
 
-    for row in rows:
-        try:
-            cols = row.find_elements(By.TAG_NAME, "td")
-            if len(cols) < 4:
-                continue
+    for game in data.get("games", []):
+        team_away = game.get("team_away", {}).get("display_name")
+        team_home = game.get("team_home", {}).get("display_name")
 
-            matchup = cols[0].text
-            spread = cols[1].text
-            moneyline = cols[2].text
-            total = cols[3].text
+        if not team_away or not team_home:
+            continue  # Skip incomplete games
 
-            def parse_percent(value):
-                try:
-                    return int(value.replace("%", "").strip())
-                except:
-                    return 0
+        matchup = f"{team_away} @ {team_home}"
+        public_data = game.get("public_bets", {})
 
-            for bet_type, percent_str in zip(["Spread", "Moneyline", "Total"], [spread, moneyline, total]):
-                percent = parse_percent(percent_str)
-                if percent >= 70:  # you can raise this back to 90 later
+        for bet_type in ["spread", "moneyline", "total"]:
+            bet_info = public_data.get(bet_type, {})
+
+            for side_key, team_name in [("away", team_away), ("home", team_home)]:
+                percent = bet_info.get(side_key)
+                if percent is not None and percent >= THRESHOLD:
                     games.append({
                         "date": datetime.now().strftime("%Y-%m-%d"),
                         "matchup": matchup,
-                        "type": bet_type,
+                        "type": bet_type.capitalize(),
+                        "side": team_name,
                         "percent": percent,
                         "result": "pending"
                     })
 
-        except Exception as e:
-            print(f"Error parsing row: {e}")
-
-    driver.quit()
     return games
 
 def save_to_csv(games, filename="data/tracked_bets.csv"):
     if not games:
-        print("No 70%+ bets found.")
+        print("No high public bets found.")
         return
 
     df = pd.DataFrame(games)
@@ -79,5 +66,5 @@ def save_to_csv(games, filename="data/tracked_bets.csv"):
     print(f"Saved {len(games)} bets to {filename}.")
 
 if __name__ == "__main__":
-    bets = scrape_with_selenium()
+    bets = fetch_betting_data()
     save_to_csv(bets)
