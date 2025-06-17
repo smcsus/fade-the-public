@@ -4,17 +4,19 @@
 
 ## Current Features
 
-- Uses a headless Chrome browser via Selenium to scrape betting data
-- Filters and logs games with 70% or more public action on any side (Spread, Moneyline, or Total)
-- Stores logged bets in `data/tracked_bets.csv` with date, matchup, type, percent, and result
-- All scraping is fully automated and browser-accurate (JS-rendered content supported)
+- Scrapes public betting percentages using Action Network’s JSON API (no Selenium required)
+- Filters and logs bets where either side (home or away) has ≥ 70% of the public on spread, moneyline, or total
+- Outputs data to `data/tracked_bets.csv` with:  
+  `date`, `matchup`, `type`, `side`, `percent`, and `result`
+- Uses simple, fast, and reliable `requests`-based logic for all data pulls
 
 ## In Progress
 
-- Automatic result tracking (scraping or API-based)
-- Evaluation logic to mark public bets as win/loss
-- Daily summary reports or alert notifications (Discord or email)
-- Scheduled background execution (hourly or daily)
+- Automatic result checking via API or boxscore scraping
+- Evaluation logic to determine if the public side won or lost
+- Alerts or summaries via Discord or email
+- Multi-sport support with CLI toggle (e.g. MLB, NBA, NFL)
+- Daily/hourly automation with cron or task scheduler
 
 ## Setup
 
@@ -25,7 +27,7 @@ git clone https://github.com/your-username/fade-the-public.git
 cd fade-the-public
 ```
 
-### 2. Create and activate virtual environment
+### 2. Create and activate the virtual environment
 
 ```bash
 python3 -m venv venv
@@ -38,11 +40,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Install ChromeDriver v115 (to match local Chrome browser)
-
-Download and install ChromeDriver manually if needed (see project notes).
-
-### 5. Run the scraper
+### 4. Run the scraper
 
 ```bash
 python src/scrape_bets.py
@@ -51,8 +49,12 @@ python src/scrape_bets.py
 ## Requirements
 
 - Python 3.9+
-- Google Chrome browser
-- ChromeDriver v115 (or matching version for your installed Chrome)
+- Internet connection to fetch API data from Action Network
+
+## Notes
+
+- This project **no longer uses ChromeDriver or Selenium**
+- All scraping is done directly from Action Network’s structured public API
 
 ## Author
 
